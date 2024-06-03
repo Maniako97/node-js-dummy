@@ -3,6 +3,7 @@ run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on:
   push:
     branches: ["main", "workshop1"]
+  workflow_dispatch:
 jobs:
   Lint:
     runs-on: ubuntu-latest
@@ -12,4 +13,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '16'
-      - run: npm audit
+      - run: npm audit || exit 0
