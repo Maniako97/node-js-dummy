@@ -1,8 +1,8 @@
 name: GitHub Actions Bootcamp CICD
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on:
-  schedule:
-    - cron: "*/2 * * * *" 
+  # schedule:
+  #   - cron: "*/2 * * * *" 
   # push:
   #   branches: ["main", "workshop1"]
   workflow_dispatch:
