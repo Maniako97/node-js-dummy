@@ -5,6 +5,19 @@ on:
   pull_request:
     branches: ["main"]
 jobs:
+  verify-install:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        nodeversion: [14, 16, 20]
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{matrix.nodeversion}}
+      - name: Verify packages
+        run: npm ci
   audit:
     runs-on: ubuntu-latest
     steps:
@@ -20,6 +33,7 @@ jobs:
         uses: thollander/actions-comment-pull-request@v2
         with:
           filePath: ./audit.log
+    needs: [verify-install]
   test:
     runs-on: ubuntu-latest
     steps:
@@ -31,6 +45,7 @@ jobs:
       - name: Testing App
         run: npm test
         continue-on-error: True
+    needs: [verify-install]
   build:
     runs-on: ubuntu-latest
     steps:
