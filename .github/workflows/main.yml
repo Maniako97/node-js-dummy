@@ -1,31 +1,68 @@
 name: GitHub Actions Bootcamp CICD
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on:
-  # schedule:
-  #   - cron: "*/2 * * * *" 
-  # push:
-  #   branches: ["main", "workshop1"]
   workflow_dispatch:
-    # inputs:
-    #   logLevel:
-    #     description: 'Log level'
-    #     required: true
-    #     default: 'warning'
-    #     type: choice
-    #     options:
-    #     - info
-    #     - warning
-    #     - debug
-    #   tags:
-    #     description: 'Test scenario tags'
-    #     required: false
-    #     type: boolean
-    #   environment:
-    #     description: 'Environment to run tests against'
-    #     type: environment
-    #     required: true
+  pull_request:
+    branches: ["main"]
 jobs:
-  Lint:
+  verify-install:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        nodeversion: [14, 16, 20]
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{matrix.nodeversion}}
+          cache: 'npm'
+      - name: Verify packages
+        run: npm ci
+
+  audit:
+    runs-on: ubuntu-latest
+    outputs:
+      audit-report-output: ${{ steps.auditapp.outputs.auditoutput }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+      - name: Audit App
+        run: npm audit > ./audit.log || exit 0
+      - id: auditapp
+        run: |
+          echo "auditoutput<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$(cat audit.log)" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4.3.1
+        with:
+          name: audit-report
+          path: ./audit.log
+    needs: [verify-install]
+
+  audit-report:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download audit report
+        uses: actions/download-artifact@v4.1.4
+        with:
+          name: audit-report
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          filePath: ./audit.log
+      - name: Print audit report on console
+        run: cat ./audit.log
+    needs: [audit]
+
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -33,4 +70,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '16'
-      - run: npm audit || exit 0
+      - name: Testing App
+        run: npm test
+        continue-on-error: True
+    needs: [verify-install]
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_USER: ${{ github.actor }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Login to Github Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghrc.io
+          username: ${{ env.DOCKER_USER }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: echo "LC_DOCKER_REPOSITORY=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+      - name: Build Docker image
+        run: |
+          docker build -t ghrc.io/$LC_DOCKER_REPOSITORY/dummy:1.0.0 .
+      - name: Push Docker Image
+        run: docker push ghrc.io/$LC_DOCKER_REPOSITORY/dummy:1.0.0
+    needs: [audit, test]
