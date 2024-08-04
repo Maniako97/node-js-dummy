@@ -87,9 +87,10 @@ jobs:
           registry: ghrc.io
           username: ${{ env.DOCKER_USER }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - run: echo "LC_DOCKER_REPOSITORY=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
       - name: Build Docker image
         run: |
-          docker build -t ghrc.io/$DOCKER_USER/$GITHUB_REPOSITORY/dummy:1.0.0 .
+          docker build -t ghrc.io/$LC_DOCKER_REPOSITORY/dummy:1.0.0 .
       - name: Push Docker Image
-        run: docker push ghrc.io/$DOCKER_USER/$GITHUB_REPOSITORY/dummy:1.0.0
+        run: docker push ghrc.io/$LC_DOCKER_REPOSITORY/dummy:1.0.0
     needs: [audit, test]
