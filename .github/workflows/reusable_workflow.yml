@@ -1,0 +1,38 @@
+name: Reusable Workflow
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+on:
+  workflow_call:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+      - name: Audit App
+        run: npm audit > ./audit.log || exit 0
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4.3.1
+        with:
+          name: audit-report
+          path: ./audit.log
+
+  audit-report:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download audit report
+        uses: actions/download-artifact@v4.1.4
+        with:
+          name: audit-report
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          filePath: ./audit.log
+      - name: Print audit report on console
+        run: cat ./audit.log
+    needs: [audit]

@@ -19,49 +19,9 @@ jobs:
           cache: 'npm'
       - name: Verify packages
         run: npm ci
-
   audit:
-    runs-on: ubuntu-latest
-    outputs:
-      audit-report-output: ${{ steps.auditapp.outputs.auditoutput }}
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '16'
-      - name: Audit App
-        run: npm audit > ./audit.log || exit 0
-      - id: auditapp
-        run: |
-          echo "auditoutput<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$(cat audit.log)" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-      - name: Upload audit report
-        uses: actions/upload-artifact@v4.3.1
-        with:
-          name: audit-report
-          path: ./audit.log
+    uses: ./.github/workflows/reusable_workflow.yml
     needs: [verify-install]
-
-  audit-report:
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Download audit report
-        uses: actions/download-artifact@v4.1.4
-        with:
-          name: audit-report
-      - name: Comment PR
-        if: github.event_name == 'pull_request'
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          filePath: ./audit.log
-      - name: Print audit report on console
-        run: cat ./audit.log
-    needs: [audit]
-
   test:
     runs-on: ubuntu-latest
     steps:
@@ -76,6 +36,8 @@ jobs:
     needs: [verify-install]
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     env:
       DOCKER_USER: ${{ github.actor }}
     steps:
