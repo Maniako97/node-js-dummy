@@ -2,6 +2,10 @@ name: Reusable Workflow
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on:
   workflow_call:
+    inputs:
+      enable-report:
+        default: true
+        type: boolean
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -21,6 +25,7 @@ jobs:
 
   audit-report:
     runs-on: ubuntu-latest
+    if: inputs.enable-report
     permissions:
       pull-requests: write
     steps:
